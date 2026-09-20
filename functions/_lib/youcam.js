@@ -78,20 +78,55 @@ function derReadTLV(bytes, pos) {
   return { tag, start, end, next: end };
 }
 
-// SubjectPublicKeyInfo ::= SEQUENCE { AlgorithmIdentifier, BIT STRING {
-//   RSAPublicKey ::= SEQUENCE { INTEGER modulus, INTEGER publicExponent } } }
+// "RSA X.509 format" could mean a bare SubjectPublicKeyInfo, or a full X.509
+// certificate (which has a SubjectPublicKeyInfo nested a few SEQUENCEs deep
+// inside its tbsCertificate). Rather than assume one fixed shape, recursively
+// scan the DER tree for a BIT STRING whose payload itself decodes as
+// RSAPublicKey ::= SEQUENCE { INTEGER modulus, INTEGER publicExponent } —
+// that works for both shapes without needing to know which one was supplied.
+function tryReadRsaPublicKeyFromBitString(der, bitstrTlv) {
+  try {
+    const inner = der.slice(bitstrTlv.start + 1, bitstrTlv.end); // skip "unused bits" byte
+    const seq = derReadTLV(inner, 0);
+    if (seq.tag !== 0x30 || seq.next !== inner.length) return null;
+    const modulusTlv = derReadTLV(inner, seq.start);
+    if (modulusTlv.tag !== 0x02) return null;
+    const expTlv = derReadTLV(inner, modulusTlv.next);
+    if (expTlv.tag !== 0x02 || expTlv.next !== seq.end) return null;
+    let modulusBytes = inner.slice(modulusTlv.start, modulusTlv.end);
+    if (modulusBytes[0] === 0x00) modulusBytes = modulusBytes.slice(1); // strip sign byte
+    const expBytes = inner.slice(expTlv.start, expTlv.end);
+    return { n: bytesToBigInt(modulusBytes), e: bytesToBigInt(expBytes), keyByteLen: modulusBytes.length };
+  } catch (err) {
+    return null;
+  }
+}
+
+function findRsaPublicKeyInDer(der, pos, end) {
+  while (pos < end) {
+    let tlv;
+    try {
+      tlv = derReadTLV(der, pos);
+    } catch (err) {
+      return null;
+    }
+    if (tlv.tag === 0x03) {
+      const found = tryReadRsaPublicKeyFromBitString(der, tlv);
+      if (found) return found;
+    }
+    if (tlv.tag === 0x30 || tlv.tag === 0x31 || tlv.tag === 0xa0 || tlv.tag === 0xa3) {
+      const found = findRsaPublicKeyInDer(der, tlv.start, tlv.end);
+      if (found) return found;
+    }
+    pos = tlv.next;
+  }
+  return null;
+}
+
 function parseRsaPublicKeyFromX509Der(der) {
-  const outer = derReadTLV(der, 0);
-  const alg = derReadTLV(der, outer.start);
-  const bitstr = derReadTLV(der, alg.next);
-  const innerDer = der.slice(bitstr.start + 1, bitstr.end); // skip "unused bits" byte
-  const innerSeq = derReadTLV(innerDer, 0);
-  const modulusTlv = derReadTLV(innerDer, innerSeq.start);
-  const expTlv = derReadTLV(innerDer, modulusTlv.next);
-  let modulusBytes = innerDer.slice(modulusTlv.start, modulusTlv.end);
-  if (modulusBytes[0] === 0x00) modulusBytes = modulusBytes.slice(1); // strip sign byte
-  const expBytes = innerDer.slice(expTlv.start, expTlv.end);
-  return { n: bytesToBigInt(modulusBytes), e: bytesToBigInt(expBytes), keyByteLen: modulusBytes.length };
+  const found = findRsaPublicKeyInDer(der, 0, der.length);
+  if (!found) throw new Error('Could not find an RSA public key inside YOUCAM_CLIENT_SECRET');
+  return found;
 }
 
 function modPow(base, exp, mod) {
