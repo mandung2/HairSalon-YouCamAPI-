@@ -760,7 +760,7 @@
     img.style.inset = '0';
     img.style.width = '100%';
     img.style.height = '100%';
-    img.style.objectFit = 'cover';
+    img.style.objectFit = 'contain';
     if (oldEl.style.clipPath) img.style.clipPath = oldEl.style.clipPath;
     oldEl.parentNode.replaceChild(img, oldEl);
     return img;
