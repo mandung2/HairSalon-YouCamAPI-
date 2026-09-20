@@ -6,22 +6,21 @@
 // This file only runs inside the Cloudflare Pages Function (server side).
 // It must never be imported by, or its secrets exposed to, the browser bundle.
 
-import forge from 'node-forge';
+// No external crypto library: node-forge's RNG auto-detects a "Node-like"
+// environment and calls require('crypto').randomBytes, which the Cloudflare
+// Workers/Pages Functions runtime does not implement, crashing with
+// "_crypto.randomBytes is not a function". Everything below uses only
+// Web-standard APIs that the Workers runtime guarantees (atob/btoa, BigInt,
+// crypto.getRandomValues, TextEncoder), verified against Node's own
+// RSA_PKCS1_PADDING decrypt to confirm byte-for-byte correctness.
 
 const AUTH_BASE = 'https://yce-api-01.perfectcorp.com';
 const API_BASE = 'https://yce-api-01.makeupar.com';
 
-// Step 1 of the documented flow: build the RSA-encrypted id_token.
-// Docs describe this as: "Encrypted client_id=<client_id>&timestamp=<ms> with
-// RSA X.509 format Base64 encoded client_secret". The exact padding scheme
-// (PKCS1 v1.5) is the common default Perfect Corp's sample SDKs use; if the
-// auth call below ever returns 401, this is the first thing to re-check
-// against the real code sample shown in your Perfect Corp console.
 // Cloudflare's env var UI (and copy/paste in general) very easily leaves a
 // trailing newline/space on a pasted value, or the key gets pasted as a full
-// PEM block instead of the raw base64 body. Both silently corrupt the RSA
-// encryption without throwing, and the API then answers with a generic
-// "Invalid client_id or invalid id_token" 401. Normalize defensively.
+// PEM block instead of the raw base64 body. Both would silently corrupt the
+// RSA encryption, so normalize defensively.
 function normalizeClientId(raw) {
   return String(raw).trim();
 }
@@ -33,13 +32,113 @@ function normalizePublicKeyBase64(raw) {
     .replace(/\s+/g, '');
 }
 
+function base64ToBytes(b64) {
+  const binStr = atob(b64);
+  const bytes = new Uint8Array(binStr.length);
+  for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
+  return bytes;
+}
+
+function bytesToBase64(bytes) {
+  let binStr = '';
+  for (let i = 0; i < bytes.length; i++) binStr += String.fromCharCode(bytes[i]);
+  return btoa(binStr);
+}
+
+function bytesToBigInt(bytes) {
+  let hex = '0x';
+  for (const b of bytes) hex += b.toString(16).padStart(2, '0');
+  return BigInt(hex === '0x' ? '0x0' : hex);
+}
+
+function bigIntToBytes(bi, len) {
+  let hex = bi.toString(16);
+  if (hex.length % 2) hex = '0' + hex;
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+  if (bytes.length < len) {
+    const out = new Uint8Array(len);
+    out.set(bytes, len - bytes.length);
+    return out;
+  }
+  return bytes;
+}
+
+// Minimal DER reader — just enough to walk a SubjectPublicKeyInfo structure.
+function derReadTLV(bytes, pos) {
+  const tag = bytes[pos++];
+  let len = bytes[pos++];
+  if (len & 0x80) {
+    const numBytes = len & 0x7f;
+    len = 0;
+    for (let i = 0; i < numBytes; i++) len = (len << 8) | bytes[pos++];
+  }
+  const start = pos;
+  const end = start + len;
+  return { tag, start, end, next: end };
+}
+
+// SubjectPublicKeyInfo ::= SEQUENCE { AlgorithmIdentifier, BIT STRING {
+//   RSAPublicKey ::= SEQUENCE { INTEGER modulus, INTEGER publicExponent } } }
+function parseRsaPublicKeyFromX509Der(der) {
+  const outer = derReadTLV(der, 0);
+  const alg = derReadTLV(der, outer.start);
+  const bitstr = derReadTLV(der, alg.next);
+  const innerDer = der.slice(bitstr.start + 1, bitstr.end); // skip "unused bits" byte
+  const innerSeq = derReadTLV(innerDer, 0);
+  const modulusTlv = derReadTLV(innerDer, innerSeq.start);
+  const expTlv = derReadTLV(innerDer, modulusTlv.next);
+  let modulusBytes = innerDer.slice(modulusTlv.start, modulusTlv.end);
+  if (modulusBytes[0] === 0x00) modulusBytes = modulusBytes.slice(1); // strip sign byte
+  const expBytes = innerDer.slice(expTlv.start, expTlv.end);
+  return { n: bytesToBigInt(modulusBytes), e: bytesToBigInt(expBytes), keyByteLen: modulusBytes.length };
+}
+
+function modPow(base, exp, mod) {
+  let result = 1n;
+  base %= mod;
+  while (exp > 0n) {
+    if (exp & 1n) result = (result * base) % mod;
+    exp >>= 1n;
+    base = (base * base) % mod;
+  }
+  return result;
+}
+
+// EME-PKCS1-v1_5 padding: 0x00 0x02 <non-zero random padding> 0x00 <message>
+function pkcs1Pad(messageBytes, keyByteLen) {
+  const psLen = keyByteLen - messageBytes.length - 3;
+  if (psLen < 8) throw new Error('id_token message too long for the RSA key size');
+  const ps = new Uint8Array(psLen);
+  crypto.getRandomValues(ps);
+  for (let i = 0; i < ps.length; i++) {
+    while (ps[i] === 0) {
+      const one = new Uint8Array(1);
+      crypto.getRandomValues(one);
+      ps[i] = one[0];
+    }
+  }
+  const eb = new Uint8Array(keyByteLen);
+  eb[0] = 0x00;
+  eb[1] = 0x02;
+  eb.set(ps, 2);
+  eb[2 + psLen] = 0x00;
+  eb.set(messageBytes, 3 + psLen);
+  return eb;
+}
+
+function rsaPkcs1v15EncryptWithX509(messageStr, x509Base64) {
+  const der = base64ToBytes(x509Base64);
+  const { n, e, keyByteLen } = parseRsaPublicKeyFromX509Der(der);
+  const padded = pkcs1Pad(new TextEncoder().encode(messageStr), keyByteLen);
+  const cipherInt = modPow(bytesToBigInt(padded), e, n);
+  return bytesToBase64(bigIntToBytes(cipherInt, keyByteLen));
+}
+
 function buildIdToken(clientId, clientSecretBase64X509) {
   const timestamp = Date.now();
   const message = `client_id=${clientId}&timestamp=${timestamp}`;
-  const der = forge.util.decode64(clientSecretBase64X509);
-  const publicKey = forge.pki.publicKeyFromAsn1(forge.asn1.fromDer(der));
-  const encrypted = publicKey.encrypt(message, 'RSAES-PKCS1-V1_5');
-  return forge.util.encode64(encrypted);
+  return rsaPkcs1v15EncryptWithX509(message, clientSecretBase64X509);
 }
 
 function pick(obj, ...paths) {
