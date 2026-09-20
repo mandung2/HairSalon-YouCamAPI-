@@ -17,6 +17,22 @@ const API_BASE = 'https://yce-api-01.makeupar.com';
 // (PKCS1 v1.5) is the common default Perfect Corp's sample SDKs use; if the
 // auth call below ever returns 401, this is the first thing to re-check
 // against the real code sample shown in your Perfect Corp console.
+// Cloudflare's env var UI (and copy/paste in general) very easily leaves a
+// trailing newline/space on a pasted value, or the key gets pasted as a full
+// PEM block instead of the raw base64 body. Both silently corrupt the RSA
+// encryption without throwing, and the API then answers with a generic
+// "Invalid client_id or invalid id_token" 401. Normalize defensively.
+function normalizeClientId(raw) {
+  return String(raw).trim();
+}
+
+function normalizePublicKeyBase64(raw) {
+  return String(raw)
+    .replace(/-----BEGIN [^-]+-----/g, '')
+    .replace(/-----END [^-]+-----/g, '')
+    .replace(/\s+/g, '');
+}
+
 function buildIdToken(clientId, clientSecretBase64X509) {
   const timestamp = Date.now();
   const message = `client_id=${clientId}&timestamp=${timestamp}`;
@@ -35,12 +51,14 @@ function pick(obj, ...paths) {
 }
 
 export async function getAccessToken(env) {
-  const clientId = env.YOUCAM_CLIENT_ID;
-  const clientSecret = env.YOUCAM_CLIENT_SECRET;
-  if (!clientId || !clientSecret) {
+  const rawClientId = env.YOUCAM_CLIENT_ID;
+  const rawClientSecret = env.YOUCAM_CLIENT_SECRET;
+  if (!rawClientId || !rawClientSecret) {
     throw new Error('YOUCAM_CLIENT_ID / YOUCAM_CLIENT_SECRET is not configured');
   }
 
+  const clientId = normalizeClientId(rawClientId);
+  const clientSecret = normalizePublicKeyBase64(rawClientSecret);
   const idToken = buildIdToken(clientId, clientSecret);
 
   const res = await fetch(`${AUTH_BASE}/s2s/v1.0/client/auth`, {
