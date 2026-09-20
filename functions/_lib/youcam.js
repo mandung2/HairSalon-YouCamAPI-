@@ -232,12 +232,12 @@ export async function uploadImage(accessToken, bytes, contentType, fileName) {
     throw new Error(`YouCam file init failed (${initRes.status}): ${JSON.stringify(initData)}`);
   }
 
-  const fileId = pick(initData, 'data.file_id', 'result.file_id');
+  // Real response shape: { data: { files: [ { file_id, requests: [ { method, url, headers } ] } ] } }
   const fileEntry = pick(initData, 'data.files.0', 'result.files.0');
-  const uploadUrl = fileEntry && fileEntry.requests && fileEntry.requests.url;
-  const uploadHeaders = (fileEntry && fileEntry.requests && fileEntry.requests.headers) || {
-    'Content-Type': contentType
-  };
+  const fileId = fileEntry && fileEntry.file_id;
+  const uploadRequest = pick(fileEntry, 'requests.0');
+  const uploadUrl = uploadRequest && uploadRequest.url;
+  const uploadHeaders = (uploadRequest && uploadRequest.headers) || { 'Content-Type': contentType };
 
   if (!fileId || !uploadUrl) {
     throw new Error(`YouCam file init response missing file_id/url: ${JSON.stringify(initData)}`);
