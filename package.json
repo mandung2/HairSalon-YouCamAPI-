@@ -1,0 +1,9 @@
+{
+  "name": "mandung2-salon",
+  "private": true,
+  "version": "1.0.0",
+  "description": "MANDUNG2 SALON static site + Cloudflare Pages Functions backend for the YouCam AI Hair Style Generator API.",
+  "dependencies": {
+    "node-forge": "^1.3.1"
+  }
+}

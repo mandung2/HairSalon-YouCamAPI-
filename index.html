@@ -324,31 +324,30 @@
     <div style="text-align:center;max-width:640px;margin:0 auto 64px;">
       <div style="font-size:12px;letter-spacing:0.12em;color:var(--gold-dark);margin-bottom:16px;">✦ AI HAIRSTYLE TRY-ON</div>
       <h2 style="font-family:'Cormorant Garamond','Noto Serif KR',serif;font-weight:500;font-size:clamp(28px,4vw,42px);margin:0 0 18px;">시술 전, 미리 만나보세요</h2>
-      <p style="font-size:14px;color:var(--ink-soft);line-height:1.8;margin:0;">사진을 업로드하면 AI가 다양한 헤어스타일을 가상으로 적용해드립니다. 원하는 컬러 사진을 함께 활용하면 컬러까지 미리 확인할 수 있어요. 아래는 데모 화면이며, API 연동 후 실제 서비스가 제공될 예정입니다.</p>
+      <p style="font-size:14px;color:var(--ink-soft);line-height:1.8;margin:0;">내 사진과 원하는 헤어스타일 사진을 올려주세요. AI가 실제로 합성한 결과를 미리 보여드립니다.</p>
     </div>
 
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:40px;align-items:start;">
 
       <div style="background:#fff;border:1px solid var(--taupe-line);border-radius:10px;padding:32px;">
-        <div style="border:1.5px dashed var(--taupe-line);border-radius:10px;padding:40px 20px;text-align:center;margin-bottom:24px;">
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--gold-dark)" stroke-width="1.5" style="margin:0 auto 12px;display:block;"><path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
-          <div style="font-size:13px;font-weight:500;margin-bottom:4px;">클릭하여 사진 업로드</div>
-          <div style="font-size:11px;color:var(--ink-soft);">JPG, PNG 지원 (데모 화면)</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;margin-bottom:24px;">
+          <label for="m2-src-input" class="js-src-drop" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1.5px dashed var(--taupe-line);border-radius:10px;padding:24px 12px;text-align:center;min-height:150px;">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--gold-dark)" stroke-width="1.5" style="margin:0 auto 10px;display:block;"><path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+            <div style="font-size:12px;font-weight:500;">내 사진 업로드</div>
+            <div style="font-size:10px;color:var(--ink-soft);margin-top:2px;">JPG, PNG (10MB 이하)</div>
+          </label>
+          <input id="m2-src-input" type="file" accept="image/jpeg,image/png" hidden>
+
+          <label for="m2-ref-input" class="js-ref-drop" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1.5px dashed var(--taupe-line);border-radius:10px;padding:24px 12px;text-align:center;min-height:150px;">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--gold-dark)" stroke-width="1.5" style="margin:0 auto 10px;display:block;"><path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+            <div style="font-size:12px;font-weight:500;">원하는 헤어스타일 사진 업로드</div>
+            <div style="font-size:10px;color:var(--ink-soft);margin-top:2px;">JPG, PNG (10MB 이하)</div>
+          </label>
+          <input id="m2-ref-input" type="file" accept="image/jpeg,image/png" hidden>
         </div>
 
-        <div style="font-size:12px;letter-spacing:0.08em;color:var(--ink-soft);margin-bottom:12px;">스타일 선택</div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:28px;">
-          <button type="button" class="style-chip js-style-chip is-selected" data-value="wave">Long Wave</button>
-          <button type="button" class="style-chip js-style-chip" data-value="bob">Bob</button>
-          <button type="button" class="style-chip js-style-chip" data-value="layered">Layered Cut</button>
-          <button type="button" class="style-chip js-style-chip" data-value="perm">Perm Curl</button>
-        </div>
-
-        <button type="button" class="js-ai-demo-btn btn-primary" style="width:100%;background:var(--gold);color:var(--ivory);border:none;padding:14px 28px;border-radius:8px;font-size:13px;letter-spacing:0.05em;font-weight:500;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:10px;">
-          AI 헤어스타일 시뮬레이션 시작하기
-          <span style="font-size:9px;letter-spacing:0.08em;background:rgba(250,247,241,0.25);padding:3px 9px;border-radius:4px;">COMING SOON</span>
-        </button>
-        <div class="js-ai-message" hidden style="margin-top:14px;font-size:12px;color:var(--gold-dark);background:var(--gold-soft);padding:12px 14px;border-radius:10px;text-align:center;">🔧 AI 헤어스타일 시뮬레이션 기능은 준비 중입니다. 곧 만나보세요!</div>
+        <button type="button" class="js-ai-demo-btn btn-primary" style="width:100%;background:var(--gold);color:var(--ivory);border:none;padding:14px 28px;border-radius:8px;font-size:13px;letter-spacing:0.05em;font-weight:500;cursor:pointer;font-family:inherit;">AI 헤어스타일 시뮬레이션 시작하기</button>
+        <div class="js-ai-message" hidden style="margin-top:14px;font-size:12px;color:var(--gold-dark);background:var(--gold-soft);padding:12px 14px;border-radius:10px;text-align:center;"></div>
       </div>
 
       <div style="background:#fff;border:1px solid var(--taupe-line);border-radius:10px;padding:32px;">
@@ -357,7 +356,7 @@
           <span>AFTER · AI 스타일 제안</span>
         </div>
         <div style="position:relative;aspect-ratio:4/3;border-radius:10px;overflow:hidden;background:var(--paper);">
-          <svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet" style="position:absolute;inset:0;width:100%;height:100%;">
+          <svg class="js-before-layer" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet" style="position:absolute;inset:0;width:100%;height:100%;">
             <circle cx="200" cy="118" r="52" fill="#EAD9C4"/>
             <path d="M148,100 C148,55 252,55 252,100 L260,190 C224,204 176,204 140,190 Z" fill="var(--ink)" opacity="0.85"/>
           </svg>
@@ -669,20 +668,39 @@
     });
   });
 
-  var styleChips = qsa('.js-style-chip');
-  styleChips.forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      exclusiveSelect(styleChips, btn);
-    });
-  });
+  var srcInput = qs('#m2-src-input');
+  var refInput = qs('#m2-ref-input');
+  var srcDrop = qs('.js-src-drop');
+  var refDrop = qs('.js-ref-drop');
+  var selectedSrcFile = null;
+  var selectedRefFile = null;
 
-  var aiBtn = qs('.js-ai-demo-btn');
-  var aiMsg = qs('.js-ai-message');
-  if (aiBtn) {
-    aiBtn.addEventListener('click', function () { aiMsg.hidden = false; });
+  function previewIntoDropzone(labelEl, file) {
+    var url = URL.createObjectURL(file);
+    labelEl.innerHTML = '<img src="' + url + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">';
+    labelEl.style.padding = '0';
+    labelEl.style.overflow = 'hidden';
+  }
+
+  if (srcInput) {
+    srcInput.addEventListener('change', function () {
+      if (srcInput.files && srcInput.files[0]) {
+        selectedSrcFile = srcInput.files[0];
+        previewIntoDropzone(srcDrop, selectedSrcFile);
+      }
+    });
+  }
+  if (refInput) {
+    refInput.addEventListener('change', function () {
+      if (refInput.files && refInput.files[0]) {
+        selectedRefFile = refInput.files[0];
+        previewIntoDropzone(refDrop, selectedRefFile);
+      }
+    });
   }
 
   var slider = qs('.js-slider');
+  var beforeLayer = qs('.js-before-layer');
   var afterLayer = qs('.js-after-layer');
   var divider = qs('.js-divider');
   if (slider) {
@@ -690,6 +708,68 @@
       var v = slider.value;
       afterLayer.style.clipPath = 'inset(0 calc(100% - ' + v + '%) 0 0)';
       divider.style.left = v + '%';
+    });
+  }
+
+  function swapLayerWithImage(oldEl, imgSrc) {
+    var img = document.createElement('img');
+    img.className = oldEl.className;
+    img.src = imgSrc;
+    img.style.position = 'absolute';
+    img.style.inset = '0';
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.objectFit = 'cover';
+    if (oldEl.style.clipPath) img.style.clipPath = oldEl.style.clipPath;
+    oldEl.parentNode.replaceChild(img, oldEl);
+    return img;
+  }
+
+  var aiBtn = qs('.js-ai-demo-btn');
+  var aiMsg = qs('.js-ai-message');
+
+  function showAiMessage(text, isError) {
+    aiMsg.hidden = false;
+    aiMsg.textContent = text;
+    aiMsg.style.color = isError ? '#B3413B' : 'var(--gold-dark)';
+    aiMsg.style.background = isError ? '#F5E4E1' : 'var(--gold-soft)';
+  }
+
+  if (aiBtn) {
+    var aiBtnDefaultLabel = aiBtn.textContent;
+    aiBtn.addEventListener('click', function () {
+      if (!selectedSrcFile || !selectedRefFile) {
+        showAiMessage('내 사진과 원하는 헤어스타일 사진을 모두 업로드해주세요.', true);
+        return;
+      }
+
+      aiBtn.disabled = true;
+      aiBtn.textContent = 'AI가 헤어스타일을 생성하는 중입니다...';
+      showAiMessage('잠시만 기다려주세요. 최대 20초 정도 걸릴 수 있어요.', false);
+
+      var formData = new FormData();
+      formData.append('src', selectedSrcFile);
+      formData.append('ref', selectedRefFile);
+
+      fetch('/api/hairstyle', { method: 'POST', body: formData })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          aiBtn.disabled = false;
+          aiBtn.textContent = aiBtnDefaultLabel;
+          if (data.ok) {
+            aiMsg.hidden = true;
+            beforeLayer = swapLayerWithImage(beforeLayer, URL.createObjectURL(selectedSrcFile));
+            afterLayer = swapLayerWithImage(afterLayer, data.resultUrl);
+            if (slider) afterLayer.style.clipPath = 'inset(0 calc(100% - ' + slider.value + '%) 0 0)';
+          } else {
+            showAiMessage(data.error || 'AI 시뮬레이션 중 오류가 발생했습니다.', true);
+          }
+        })
+        .catch(function () {
+          aiBtn.disabled = false;
+          aiBtn.textContent = aiBtnDefaultLabel;
+          showAiMessage('서버와 통신 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', true);
+        });
     });
   }
 
